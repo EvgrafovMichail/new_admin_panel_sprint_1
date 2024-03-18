@@ -1,2 +1,3 @@
 # Python Folders
+__pycache__/
 venv/
