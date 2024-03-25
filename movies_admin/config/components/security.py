@@ -1,6 +1,7 @@
 """
 There is a file with security settings for Django app
 """
+
 import os
 
 
