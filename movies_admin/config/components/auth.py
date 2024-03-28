@@ -1,7 +1,3 @@
-"""
-There is a file with auth setting for Django app
-"""
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",

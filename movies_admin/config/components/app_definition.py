@@ -1,7 +1,3 @@
-"""
-There is a file with Django app definition settings
-"""
-
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
