@@ -1,7 +1,3 @@
-"""
-There is a file with database settings for Django app
-"""
-
 import os
 
 

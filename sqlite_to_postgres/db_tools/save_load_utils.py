@@ -1,5 +1,4 @@
 import sqlite3
-import json
 
 from contextlib import contextmanager
 from typing import (
@@ -7,11 +6,9 @@ from typing import (
     Generator,
     Iterator,
     Sequence,
+    Union,
 )
-from sqlite3 import (
-    Connection as ConnectionSQLite,
-    Cursor as CursorSQLite,
-)
+from sqlite3 import Connection as ConnectionSQLite
 
 import psycopg2
 
@@ -53,13 +50,7 @@ def connect_to_sqlite(path_to_db: str) -> Generator[ConnectionSQLite, None, None
 
 
 @contextmanager
-def connect_to_postgresql(path_to_connection_config: str) -> Generator[ConnectionPostgres, None, None]:
-    if "json" not in path_to_connection_config:
-        raise RuntimeError("wrong connection config file extension, " "json-file is required")
-
-    with open(path_to_connection_config, "r") as file:
-        connection_config: dict = json.load(file)
-
+def connect_to_postgresql(connection_config: dict[str, Union[str, int]]) -> Generator[ConnectionPostgres, None, None]:
     connection: ConnectionPostgres = psycopg2.connect(**connection_config)
 
     try:
@@ -69,25 +60,12 @@ def connect_to_postgresql(path_to_connection_config: str) -> Generator[Connectio
         connection.close()
 
 
-def load_data_from_sqlite(
-    cursor: CursorSQLite,
-    table_name: str,
-    data_model: type,
-) -> Iterator[TableModel]:
-    select_statement = f"SELECT * FROM {table_name};"
-
-    cursor.execute(select_statement)
-    table_data = (data_model(**dict(record)) for record in cursor.fetchall())
-
-    return table_data
-
-
 def save_data_to_postgres(
     cursor: CursorPostgres,
     table_name: str,
     data_to_save: Iterator[TableModel],
     column_names: Sequence[str],
-    batch_size: int = 100,
+    batch_size: int,
 ) -> None:
     column_names_str = ", ".join(column_names)
     column_placeholders = ", ".join(["%s"] * len(column_names))
@@ -107,30 +85,36 @@ def save_data_to_postgres(
 
 
 def transfer_data(
-    path_to_postgres: str,
+    postgres_config: dict[str, Union[str, int]],
     path_to_sqlite: str,
     db_model_mapping: dict[str, type],
-    batch_size: int = 100,
+    batch_size: int,
 ) -> None:
     with (
-        connect_to_postgresql(path_to_postgres) as connection_postgres,
+        connect_to_postgresql(postgres_config) as connection_postgres,
         connect_to_sqlite(path_to_sqlite) as connection_sqlite,
     ):
         cursor_postgres = connection_postgres.cursor()
         cursor_sqlite = connection_sqlite.cursor()
 
         for table_name, data_model in db_model_mapping.items():
-            data_from_table = load_data_from_sqlite(
-                cursor_sqlite,
-                table_name,
-                data_model,
-            )
+            select_statement = f"SELECT * FROM {table_name};"
+            cursor_sqlite.execute(select_statement)
 
-            save_data_to_postgres(
-                cursor_postgres,
-                table_name,
-                data_from_table,
-                data_model.get_field_names(),
-                batch_size,
-            )
+            while True:
+                data_batch = cursor_sqlite.fetchmany(size=batch_size)
+
+                if not data_batch:
+                    break
+
+                data_batch = [data_model(**dict(record)) for record in data_batch]
+
+                save_data_to_postgres(
+                    cursor_postgres,
+                    table_name,
+                    data_batch,
+                    data_model.get_field_names(),
+                    batch_size,
+                )
+
             connection_postgres.commit()
