@@ -101,12 +101,7 @@ def transfer_data(
             select_statement = f"SELECT * FROM {table_name};"
             cursor_sqlite.execute(select_statement)
 
-            while True:
-                data_batch = cursor_sqlite.fetchmany(size=batch_size)
-
-                if not data_batch:
-                    break
-
+            while data_batch := cursor_sqlite.fetchmany(size=batch_size):
                 data_batch = [data_model(**dict(record)) for record in data_batch]
 
                 save_data_to_postgres(
