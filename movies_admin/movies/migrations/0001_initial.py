@@ -11,7 +11,10 @@ class Migration(migrations.Migration):
     dependencies = []
 
     operations = [
-        migrations.RunSQL("CREATE SCHEMA IF NOT EXISTS content;"),
+        migrations.RunSQL(
+            sql="CREATE SCHEMA IF NOT EXISTS content;",
+            reverse_sql="DROP SCHEMA IF EXISTS content CASCADE;",
+        ),
         migrations.CreateModel(
             name="Filmwork",
             fields=[
@@ -109,14 +112,21 @@ class Migration(migrations.Migration):
             field=models.ManyToManyField(through="movies.GenreFilmwork", to="movies.genre"),
         ),
         migrations.RunSQL(
-            "CREATE INDEX IF NOT EXISTS film_work_creation_date_idx ON content.film_work(creation_date);"
+            sql="CREATE INDEX IF NOT EXISTS film_work_creation_date_idx ON content.film_work(creation_date);",
+            reverse_sql="DROP INDEX IF EXISTS film_work_creation_date_idx;",
         ),
         migrations.RunSQL(
-            "CREATE UNIQUE INDEX IF NOT EXISTS film_work_person_idx ON"
-            " content.person_film_work(film_work_id, person_id, role);"
+            sql=(
+                "CREATE UNIQUE INDEX IF NOT EXISTS film_work_person_idx ON"
+                " content.person_film_work(film_work_id, person_id, role);"
+            ),
+            reverse_sql="DROP INDEX IF EXISTS film_work_person_idx;",
         ),
         migrations.RunSQL(
-            "CREATE UNIQUE INDEX IF NOT EXISTS film_work_genre_idx ON "
-            "content.genre_film_work(film_work_id, genre_id);"
+            sql=(
+                "CREATE UNIQUE INDEX IF NOT EXISTS film_work_genre_idx ON "
+                "content.genre_film_work(film_work_id, genre_id);"
+            ),
+            reverse_sql="DROP INDEX IF EXISTS film_work_genre_idx;",
         ),
     ]
